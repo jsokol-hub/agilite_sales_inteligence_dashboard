@@ -44,9 +44,6 @@ def main():
     run_scraper()
     run_processor()
     
-    # Start the dashboard
-    run_dashboard()
-    
     # Keep the script running
     while True:
         schedule.run_pending()

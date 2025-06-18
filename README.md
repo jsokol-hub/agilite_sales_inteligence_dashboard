@@ -29,14 +29,36 @@ pip install -r requirements.txt
 ```
 
 ## Data Collection
-The project uses web scraping to collect product data from agilite.co.il. The data collection process is automated and runs periodically to track changes in product information.
+Data is collected from https://agilite.co.il using a custom Python scraper based on Selenium and BeautifulSoup. The scraper navigates through all product pages, extracts product details (title, price, variants, stock status, images, etc.), and saves the raw data as JSON files in `data/raw/`.
+
+## Data Cleaning
+Raw data is processed using the `AgiliteDataProcessor` class. This step normalizes prices, extracts variant information, converts stock status URLs to readable labels, and outputs cleaned CSV files in `data/processed/`. The processor also adds derived fields such as category (from product title) and image count.
 
 ## Dashboard
-The dashboard is built using [Tool to be determined] and provides insights into:
-- Top-selling products
-- Sales trends by day and month
-- Product variant analysis
-- Stock level monitoring
+The dashboard is built with Dash and Plotly, running in a Docker container. It visualizes:
+- Category distribution
+- Stock status distribution
+- Variant and price distributions
+- Top products by price
+- Stock level dynamics over time (overall and by category)
+
+The dashboard auto-updates every 5 minutes and reads the latest processed data.
+
+## Assumptions
+- Stock status is used as a proxy for sales (if a product goes from In Stock to Out of Stock, it is considered sold out).
+- Product categories are inferred from keywords in the product title.
+- Variants are extracted from product options or offer names.
+- Data is collected from public pages only (no internal API access).
+
+## Next Steps (if more time)
+- Add more granular sales tracking (e.g., by monitoring changes in stock levels over time).
+- Integrate with Google Data Studio or Power BI for advanced analytics.
+- Add filters and drill-downs in the dashboard (by category, price range, etc.).
+- Automate regular data collection and backup.
+- Add alerting for low stock or fast-selling products.
+
+## Insights & Recommendations
+See `docs/insights.md` for a summary of key findings and actionable recommendations based on the latest data.
 
 ## Documentation
 Detailed documentation can be found in the `docs/` directory:
