@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11.9-slim
 
 # Allow insecure repositories (workaround for GPG error)
 RUN echo 'Acquire::AllowInsecureRepositories "true";' > /etc/apt/apt.conf.d/99insecure \
@@ -17,6 +17,9 @@ RUN apt-get update && \
         libgtk-3-0 \
         libdbus-glib-1-2 \
         libxt6 \
+        libgl1 \
+        libxrender1 \
+        libfontconfig1 \
         libxss1 \
         libnss3 \
         libxcomposite1 \

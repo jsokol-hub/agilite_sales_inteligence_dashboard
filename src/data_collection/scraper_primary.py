@@ -35,6 +35,8 @@ class AgiliteScraper:
             firefox_options.add_argument('--height=1080')
             firefox_options.set_preference('permissions.default.image', 2)  # Disable image loading
             firefox_options.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', False)  # Disable Flash
+            firefox_options.add_argument('--no-sandbox')
+            firefox_options.add_argument('--headless')
             
             # Add security preferences
             firefox_options.set_preference('security.ssl.enable_ocsp_stapling', False)
