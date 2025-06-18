@@ -21,7 +21,7 @@ def run_processor():
     """Run the data processing process"""
     print(f"\n[{datetime.now()}] Starting data processing...")
     processor = AgiliteDataProcessor()
-    processor.process_and_save()
+    processor.process_data()
 
 def run_dashboard():
     """Run the dashboard"""
