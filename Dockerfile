@@ -46,4 +46,4 @@ COPY . /app
 WORKDIR /app
 
 # Run Xvfb and your main.py
-CMD ["xvfb-run", "-a", "python", "src/main.py"] 
+CMD ["python", "src/dashboard/app.py"] 
