@@ -14,10 +14,11 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 import re
+from datetime import datetime
 
 class AgiliteScraper:
     def __init__(self, test_mode=False):
-        self.base_url = "https://agilite.co.il/collections/all?page=1"
+        self.base_url = "https://agilite.co.il/collections/all"
         self.driver = None
         self.test_mode = test_mode
         self.setup_driver()
@@ -135,19 +136,35 @@ class AgiliteScraper:
             print(f"Error getting product links from page {page_url}: {str(e)}")
             return []
 
+    def get_all_pagination_links(self):
+        """Collect all real page links from the pagination block"""
+        response = self.session.get(self.base_url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        pagination = soup.find('nav', class_='pagination')
+        page_urls = set()
+        if pagination:
+            for a in pagination.find_all('a', href=True):
+                href = a['href']
+                if href.startswith('/'):
+                    full_url = f"https://agilite.co.il{href}"
+                else:
+                    full_url = href
+                page_urls.add(full_url)
+        # Explicitly add the first page if it's not in pagination
+        if self.base_url not in page_urls:
+            page_urls.add(self.base_url)
+        return sorted(page_urls)
+
     def get_product_links(self):
-        """Get all product links from all pages"""
+        """Get all product links from all pages (using real links from pagination)"""
         print("Getting product links...")
         all_links = []
-        total_pages = self.get_total_pages()
-        print(f"Total pages to process: {total_pages}")
-
-        # In test mode, only process first page
         if self.test_mode:
-            total_pages = 1
+            page_urls = [self.base_url]
             print("Test mode: Processing only first page")
-
-        page_urls = [f"{self.base_url}?page={i}" for i in range(1, total_pages + 1)]
+        else:
+            page_urls = self.get_all_pagination_links()
+            print(f"Page URLs to process: {page_urls}")
 
         with ThreadPoolExecutor(max_workers=5) as executor:
             results = list(executor.map(self.get_product_links_from_page, page_urls))
@@ -259,7 +276,9 @@ class AgiliteScraper:
                 'price': None,
                 'variants': [],
                 'description': None,
-                'images': []
+                'images': [],
+                'stock_status': None,
+                'timestamp': datetime.now().isoformat()
             }
 
             # Extract JSON-LD data first
@@ -281,7 +300,7 @@ class AgiliteScraper:
                     else:
                         product_data['images'] = [str(image_data)]
                 
-                # Get variants from JSON-LD offers
+                # Get variants and stock status from JSON-LD offers
                 if 'offers' in json_ld_data:
                     offers = json_ld_data['offers']
                     if isinstance(offers, list):
@@ -291,11 +310,16 @@ class AgiliteScraper:
                             # Get price from first offer
                             if not product_data['price'] and 'price' in offer:
                                 product_data['price'] = str(offer['price'])
+                            # Get availability
+                            if 'availability' in offer:
+                                product_data['stock_status'] = offer['availability']
                     elif isinstance(offers, dict):
                         if 'name' in offers:
                             product_data['variants'].append(offers['name'])
                         if 'price' in offers:
                             product_data['price'] = str(offers['price'])
+                        if 'availability' in offers:
+                            product_data['stock_status'] = offers['availability']
 
             # Fallback to HTML selectors if JSON-LD didn't provide all data
             
@@ -402,6 +426,42 @@ class AgiliteScraper:
                 except Exception as e:
                     print(f"Error getting images from HTML: {str(e)}")
 
+            # Get stock status if not found in JSON-LD
+            if not product_data['stock_status']:
+                try:
+                    print("Looking for stock status in HTML...")
+                    # Try different stock status selectors
+                    stock_selectors = [
+                        '.product-inventory',
+                        '.stock-status',
+                        '[class*="stock"]',
+                        '[class*="inventory"]',
+                        '.add-to-cart-button'
+                    ]
+                    
+                    for selector in stock_selectors:
+                        try:
+                            stock_element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                            stock_text = stock_element.text.strip().lower()
+                            
+                            # Check for common stock status indicators
+                            if 'out of stock' in stock_text or 'sold out' in stock_text:
+                                product_data['stock_status'] = 'Out of Stock'
+                            elif 'in stock' in stock_text or 'available' in stock_text:
+                                product_data['stock_status'] = 'In Stock'
+                            elif 'add to cart' in stock_text:
+                                product_data['stock_status'] = 'In Stock'
+                            elif 'pre-order' in stock_text:
+                                product_data['stock_status'] = 'Pre-order'
+                            
+                            if product_data['stock_status']:
+                                print(f"Found stock status: {product_data['stock_status']}")
+                                break
+                        except:
+                            continue
+                except Exception as e:
+                    print(f"Error getting stock status from HTML: {str(e)}")
+
             # Save product data in test mode
             if self.test_mode:
                 product_id = url.split('/')[-1]
@@ -474,8 +534,8 @@ class AgiliteScraper:
 
 if __name__ == "__main__":
     try:
-        # Create scraper in test mode
-        scraper = AgiliteScraper(test_mode=True)
+        # Create scraper in normal mode
+        scraper = AgiliteScraper(test_mode=False)
         products = scraper.scrape_all_products()
         scraper.save_products_data(products)
     except Exception as e:
