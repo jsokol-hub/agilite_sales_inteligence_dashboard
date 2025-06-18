@@ -9,6 +9,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         firefox-esr \
         xvfb \
+        xauth \
         wget \
         fonts-liberation \
         libasound2 \
