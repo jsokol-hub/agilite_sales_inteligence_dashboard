@@ -37,13 +37,34 @@ RUN wget --no-verbose https://github.com/mozilla/geckodriver/releases/download/$
     tar -xzf geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz -C /usr/local/bin && \
     rm geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz
 
+# Set working directory
+WORKDIR /app
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY . /app
-WORKDIR /app
+COPY . .
 
-# Run Xvfb and your main.py
-CMD ["python", "src/dashboard/app.py"] 
+# Create necessary directories
+RUN mkdir -p data/raw data/processed data/test_scrape
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV DISPLAY=:99
+
+# Create startup script for scraper and processor only
+RUN echo '#!/bin/bash\n\
+# Start Xvfb in background\n\
+Xvfb :99 -screen 0 1024x768x24 &\n\
+\n\
+# Wait a moment for Xvfb to start\n\
+sleep 2\n\
+\n\
+# Start the scraper and processor application\n\
+python src/scraper_processor.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Run the startup script
+CMD ["/app/start.sh"] 

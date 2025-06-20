@@ -6,6 +6,8 @@ from data_collection.scraper_primary import AgiliteScraper
 from data_processing.data_processor import AgiliteDataProcessor
 import subprocess
 import sys
+import threading
+from dashboard.app import app
 
 def run_scraper():
     """Run the data collection process"""
@@ -23,11 +25,11 @@ def run_processor():
     processor = AgiliteDataProcessor()
     processor.process_data()
 
-def run_dashboard():
-    """Run the dashboard"""
-    print(f"\n[{datetime.now()}] Starting dashboard...")
-    dashboard_path = os.path.join("src", "dashboard", "app.py")
-    subprocess.Popen([sys.executable, dashboard_path])
+def run_scheduler():
+    """Run the scheduler in a separate thread"""
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
 
 def main():
     # Create necessary directories if they don't exist
@@ -41,16 +43,27 @@ def main():
     schedule.every(1).hours.do(run_processor).at(":15")
     
     # Run initial data collection and processing
+    print("Running initial data collection and processing...")
     run_scraper()
     run_processor()
     
-    # Start the dashboard
-    run_dashboard()
+    # Start scheduler in a separate thread
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
     
-    # Keep the script running
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    # Get port from environment variable (for CapRover)
+    port = int(os.environ.get('PORT', 8050))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    print(f"Starting Dash app on port {port}")
+    
+    # Run the Dash app
+    app.run_server(
+        host='0.0.0.0',  # Allow external connections
+        port=port,
+        debug=debug,
+        use_reloader=False  # Disable reloader in production
+    )
 
 if __name__ == "__main__":
     main() 

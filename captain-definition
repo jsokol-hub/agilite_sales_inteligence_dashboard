@@ -1,4 +1,8 @@
 {
   "schemaVersion": 2,
-  "dockerfilePath": "./Dockerfile"
+  "dockerfilePath": "./Dockerfile",
+  "buildArguments": {
+    "GIT_REPO": "https://github.com/jsokol-hub/agilite_sales_inteligence_dashboard.git",
+    "GIT_BRANCH": "dash"
+  }
 } 
