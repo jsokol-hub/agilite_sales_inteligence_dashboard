@@ -1,15 +1,10 @@
 FROM python:3.11.9-slim
 
-# Allow insecure repositories (workaround for GPG error)
-RUN echo 'Acquire::AllowInsecureRepositories "true";' > /etc/apt/apt.conf.d/99insecure \
-    && echo 'Acquire::AllowDowngradeToInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99insecure
-
 # Install required system packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         firefox-esr \
         xvfb \
-        xauth \
         wget \
         fonts-liberation \
         libasound2 \
@@ -54,17 +49,5 @@ RUN mkdir -p data/raw data/processed data/test_scrape
 ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
-# Create startup script for scraper and processor only
-RUN echo '#!/bin/bash\n\
-# Start Xvfb in background\n\
-Xvfb :99 -screen 0 1024x768x24 &\n\
-\n\
-# Wait a moment for Xvfb to start\n\
-sleep 2\n\
-\n\
-# Start the scraper and processor application\n\
-python src/scraper_processor.py\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
-# Run the startup script
-CMD ["/app/start.sh"] 
+# Start Xvfb and run the application
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/main.py"] 
