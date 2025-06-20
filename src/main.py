@@ -5,17 +5,11 @@ from datetime import datetime
 import logging
 import traceback
 import sys
-from data_collection.scraper_primary import AgiliteScraper
-from data_processing.data_processor import AgiliteDataProcessor
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/app/app.log')
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -23,6 +17,8 @@ def run_scraper():
     """Run the data collection process"""
     try:
         logger.info("Starting data collection...")
+        from data_collection.scraper_primary import AgiliteScraper
+        
         scraper = AgiliteScraper()
         try:
             products_data = scraper.scrape_all_products()
@@ -43,16 +39,18 @@ def run_processor():
     """Run the data processing process"""
     try:
         logger.info("Starting data processing...")
+        from data_processing.data_processor import AgiliteDataProcessor
+        
         processor = AgiliteDataProcessor()
         try:
-            df = processor.process_data()
-            if not df.empty:
-                stats = processor.get_basic_statistics(df)
-                logger.info(f"Successfully processed {len(df)} products")
+            result = processor.process_data()
+            if result.get("success"):
+                stats = processor.get_basic_statistics()
+                logger.info(f"Successfully processed {result.get('processed_count', 0)} products")
                 logger.info(f"Statistics: {stats}")
                 return True
             else:
-                logger.warning("No data to process")
+                logger.error(f"Processing failed: {result.get('error', 'Unknown error')}")
                 return False
         except Exception as e:
             logger.error(f"Error during processing: {str(e)}")
@@ -85,9 +83,30 @@ def run_full_cycle():
     else:
         logger.error("Scraping failed, skipping processing")
 
+def test_database_connection():
+    """Test database connection before starting"""
+    try:
+        logger.info("Testing database connection...")
+        from db import test_connection
+        
+        if test_connection():
+            logger.info("Database connection test successful")
+            return True
+        else:
+            logger.error("Database connection test failed")
+            return False
+    except Exception as e:
+        logger.error(f"Database connection test error: {str(e)}")
+        return False
+
 def main():
     try:
         logger.info("Starting Agilite Scraper & Processor application")
+        
+        # Test database connection first
+        if not test_database_connection():
+            logger.error("Cannot connect to database. Exiting.")
+            sys.exit(1)
         
         # Create necessary directories if they don't exist
         os.makedirs(os.path.join("data", "raw"), exist_ok=True)
