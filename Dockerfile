@@ -49,5 +49,5 @@ RUN mkdir -p data/raw data/processed data/test_scrape
 ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
-# Start Xvfb, run import test, then start the application
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/test_imports.py && python src/main.py"] 
+# Start Xvfb and run simple test
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/simple_test.py"] 
