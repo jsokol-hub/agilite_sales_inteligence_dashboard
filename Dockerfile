@@ -1,15 +1,10 @@
 FROM python:3.11.9-slim
 
-# Allow insecure repositories (workaround for GPG error)
-RUN echo 'Acquire::AllowInsecureRepositories "true";' > /etc/apt/apt.conf.d/99insecure \
-    && echo 'Acquire::AllowDowngradeToInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99insecure
-
 # Install required system packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         firefox-esr \
         xvfb \
-        xauth \
         wget \
         fonts-liberation \
         libasound2 \
@@ -37,13 +32,22 @@ RUN wget --no-verbose https://github.com/mozilla/geckodriver/releases/download/$
     tar -xzf geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz -C /usr/local/bin && \
     rm geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz
 
+# Set working directory
+WORKDIR /app
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY . /app
-WORKDIR /app
+COPY . .
 
-# Run Xvfb and your main.py
-CMD ["xvfb-run", "-a", "python", "src/main.py"] 
+# Create necessary directories
+RUN mkdir -p data/raw data/processed data/test_scrape
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV DISPLAY=:99
+
+# Start Xvfb and run the application
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/main.py"] 
