@@ -75,6 +75,36 @@ def load_stock_history():
         })
     return history
 
+def load_variant_type_history():
+    processed_files = glob.glob(os.path.join("data", "processed", "processed_products_*.csv"))
+    history = []
+    for file in sorted(processed_files):
+        date_str = re.search(r"processed_products_(\d{8}_\d{6})", file)
+        if date_str:
+            date = datetime.strptime(date_str.group(1), "%Y%m%d_%H%M%S")
+        else:
+            date = datetime.fromtimestamp(os.path.getctime(file))
+        df = pd.read_csv(file)
+        if 'variant_types' not in df.columns:
+            continue
+        # Count products with each variant type (e.g., color, size)
+        type_counts = {"color": 0, "size": 0}
+        for types in df['variant_types'].fillna('[]'):
+            try:
+                types_list = eval(types) if isinstance(types, str) else types
+                if "color" in types_list:
+                    type_counts["color"] += 1
+                if "size" in types_list:
+                    type_counts["size"] += 1
+            except Exception:
+                continue
+        history.append({
+            'date': date,
+            'color': type_counts["color"],
+            'size': type_counts["size"]
+        })
+    return history
+
 def create_variant_distribution_chart(df):
     """Create a pie chart showing variant distribution"""
     variant_counts = df['variant_count'].value_counts()
@@ -180,6 +210,20 @@ def create_category_stock_history_chart(history):
     fig.update_layout(title="Stock Level by Category Over Time", xaxis_title="Date", yaxis_title="Number of Products In Stock")
     return fig
 
+def create_variant_type_history_chart(history):
+    if not history:
+        fig = go.Figure()
+        fig.add_annotation(text="No data available", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+    dates = [h['date'] for h in history]
+    color_counts = [h['color'] for h in history]
+    size_counts = [h['size'] for h in history]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=color_counts, mode='lines+markers', name='Color Variants'))
+    fig.add_trace(go.Scatter(x=dates, y=size_counts, mode='lines+markers', name='Size Variants'))
+    fig.update_layout(title="Variant Type Dynamics Over Time", xaxis_title="Date", yaxis_title="Number of Products")
+    return fig
+
 # Define the layout
 app.layout = dbc.Container([
     dbc.Row([
@@ -228,6 +272,13 @@ app.layout = dbc.Container([
         ], width=6)
     ]),
     
+    dbc.Row([
+        dbc.Col([
+            html.H3("Variant Type Dynamics Over Time"),
+            dcc.Graph(id='variant-type-history-chart')
+        ], width=12)
+    ]),
+    
     dcc.Interval(
         id='interval-component',
         interval=5*60*1000,  # Update every 5 minutes
@@ -242,12 +293,14 @@ app.layout = dbc.Container([
      Output('stock-status-chart', 'figure'),
      Output('top-products-table', 'children'),
      Output('stock-history-chart', 'figure'),
-     Output('category-stock-history-chart', 'figure')],
+     Output('category-stock-history-chart', 'figure'),
+     Output('variant-type-history-chart', 'figure')],
     [Input('interval-component', 'n_intervals')]
 )
 def update_dashboard(n):
     df = load_latest_data()
     history = load_stock_history()
+    variant_type_history = load_variant_type_history()
     
     # Create empty figures for when data is not available
     empty_fig = go.Figure()
@@ -261,7 +314,7 @@ def update_dashboard(n):
     )
     
     if df.empty:
-        return empty_fig, empty_fig, empty_fig, empty_fig, "No data available", empty_fig, empty_fig
+        return empty_fig, empty_fig, empty_fig, empty_fig, "No data available", empty_fig, empty_fig, empty_fig
     
     try:
         variant_chart = create_variant_distribution_chart(df)
@@ -271,11 +324,12 @@ def update_dashboard(n):
         top_products = create_top_products_table(df)
         stock_history_chart = create_stock_history_chart(history)
         category_stock_history_chart = create_category_stock_history_chart(history)
+        variant_type_history_chart = create_variant_type_history_chart(variant_type_history)
         
-        return variant_chart, price_chart, category_chart, stock_chart, top_products, stock_history_chart, category_stock_history_chart
+        return variant_chart, price_chart, category_chart, stock_chart, top_products, stock_history_chart, category_stock_history_chart, variant_type_history_chart
     except Exception as e:
         print(f"Error updating dashboard: {str(e)}")
-        return empty_fig, empty_fig, empty_fig, empty_fig, f"Error updating dashboard: {str(e)}", empty_fig, empty_fig
+        return empty_fig, empty_fig, empty_fig, empty_fig, f"Error updating dashboard: {str(e)}", empty_fig, empty_fig, empty_fig
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0', port=8050) 
