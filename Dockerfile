@@ -49,5 +49,8 @@ RUN mkdir -p data/raw data/processed data/test_scrape
 ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
-# Start Xvfb and run simple test
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/simple_test.py"] 
+# Expose port for web server
+EXPOSE 8080
+
+# Start Xvfb and run web server
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 2 && python src/web_logger.py"] 
