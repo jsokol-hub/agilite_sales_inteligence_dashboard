@@ -101,6 +101,41 @@ The data is stored in a normalized PostgreSQL schema named `agilite`.
 *   **`product_variants`**: Stores the different variants (e.g., color, size) for each product.
 *   **`scraping_sessions`**: A log of each scraping job, including start/end times, number of products found, and status.
 
+## Data Insights and Business Intelligence
+
+The system provides comprehensive business intelligence capabilities through the dashboard and database analytics:
+
+### Stock Level Insights
+- **Historical Stock Trends**: Track how product availability changes over time to identify seasonal patterns
+- **Stock-Out Analysis**: Identify products that frequently go out of stock, indicating high demand
+- **Category Performance**: Compare stock levels across different product categories
+- **Restock Timing**: Optimize inventory management by understanding when products typically need restocking
+
+### Pricing Intelligence
+- **Price Distribution Analysis**: Understand the pricing strategy across different product categories
+- **Price Change Tracking**: Monitor price fluctuations over time to identify pricing trends
+- **Competitive Positioning**: Analyze price points relative to product categories and features
+
+### Product Performance Analytics
+- **High-Demand Products**: Identify products that frequently transition from "In Stock" to "Out of Stock"
+- **Category Popularity**: Track which product categories have the highest demand
+- **Variant Analysis**: Understand which product variants (colors, sizes) are most popular
+- **Product Lifecycle**: Track how long products remain in stock before selling out
+
+### Operational Insights
+- **Scraping Performance**: Monitor the reliability and completeness of data collection
+- **Data Quality Metrics**: Track the consistency and accuracy of collected information
+- **System Health**: Monitor the overall health and performance of the data pipeline
+
+### Business Recommendations
+Based on the collected data, the system can provide actionable insights such as:
+- **Inventory Optimization**: Which products need increased stock levels
+- **Pricing Strategy**: Opportunities for price adjustments based on demand patterns
+- **Product Assortment**: Which categories or products to focus on or expand
+- **Seasonal Planning**: Prepare for expected demand fluctuations
+
+These insights enable data-driven decision making for inventory management, pricing strategy, and product assortment planning.
+
 ## Getting Started
 
 ### Requirements
