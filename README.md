@@ -1,126 +1,101 @@
-# Agilite Data Scraper & Processor
+# Agilite Data Intelligence Pipeline
 
-Простое приложение для сбора и обработки данных с сайта Agilite (agilite.co.il) с сохранением в PostgreSQL.
+This project is a data pipeline that collects product information and stock levels from agilite.co.il, processes the data, and stores it in a PostgreSQL database. The resulting database is designed to serve as a data source for sales intelligence analysis and can be connected to any dashboarding tool (e.g., Power BI, Tableau, Google Data Studio) or a custom web application.
 
-## Структура проекта
+## Project Goal
+The objective is to create a reliable, automated system for tracking product data over time, enabling historical analysis of stock levels, pricing, and product assortment.
 
-```
-├── src/
-│   ├── main.py                    # Главный скрипт
-│   ├── db.py                      # Подключение к базе данных
-│   ├── models.py                  # Модели SQLAlchemy
-│   ├── data_collection/
-│   │   └── scraper_primary.py     # Скраппер данных
-│   └── data_processing/
-│       └── data_processor.py      # Обработчик данных
-├── data/                          # Директории для данных
-│   ├── raw/                       # Сырые данные
-│   ├── processed/                 # Обработанные данные
-│   └── test_scrape/               # Тестовые данные
-├── requirements.txt               # Python зависимости
-└── env.example                    # Пример переменных окружения
-```
+## System Architecture
+The pipeline consists of two main components:
 
-## Требования
+1.  **Data Collector (`src/data_collection/scraper_primary.py`)**: A web scraper that browses the live site and extracts product data.
+2.  **Data Processor (`src/data_processing/data_processor.py`)**: A script that cleans the raw scraped data and saves it to the PostgreSQL database.
 
-- Python 3.11+
-- PostgreSQL 12+
-- psycopg2-binary
-- SQLAlchemy
+The entire process is orchestrated by `src/main.py`, which runs the collector and processor in sequence on a schedule.
 
-## Установка
+## How It Works
 
-1. Установите зависимости:
-```bash
-pip install -r requirements.txt
-```
+### Data Collection Methodology
+The system collects data using Selenium WebDriver to simulate a real user browsing the site. The process is as follows:
+1.  **Navigate to Collections**: The scraper starts at the main "all products" collection page.
+2.  **Gather Product Links**: It iterates through all pagination links to find and collect the URLs for every product.
+3.  **Visit Each Product Page**: The scraper visits each product URL individually. To handle dynamic content and ensure accuracy, it uses robust waiting mechanisms and verifies that the correct page has been loaded.
+4.  **Extract Data**: It extracts structured data (JSON-LD) when available, falling back to parsing the HTML for key information like title, price, variants, images, and stock status.
+5.  **Save Raw Data**: The collected data for all products from a single run is saved as a timestamped JSON file in the `data/raw` directory.
 
-2. Настройте базу данных PostgreSQL:
-```sql
-CREATE DATABASE agilite;
-```
+### Data Processing Pipeline
+Once the raw data is collected, the processing script takes over:
+1.  **Load Raw Data**: The processor loads the most recent JSON file from the `data/raw` directory.
+2.  **Clean and Structure**: It processes each product record to clean and normalize the data. This includes:
+    *   **Price Cleaning**: Removing currency symbols and converting the price to a numeric format.
+    *   **Stock Status Parsing**: Interpreting text like "In Stock" or "Out of Stock" into a consistent format.
+    *   **Category Extraction**: Assigning a category to each product based on keywords in its title.
+3.  **Save to Database**: The cleaned data is loaded into a PostgreSQL database. A new record is created for each product on every run, preserving the `processing_timestamp` to build a history of stock levels and other attributes over time.
 
-3. Скопируйте и настройте переменные окружения:
-```bash
-cp env.example .env
-# Отредактируйте .env файл с вашими параметрами БД
-```
+## Database Structure
+The data is stored in a normalized PostgreSQL schema named `agilite`.
 
-## Переменные окружения
+*   **`products`**: Stores a historical record of each product for every scrape session. Key fields include `url`, `title`, `price`, `stock_status`, `category`, and `processing_timestamp`.
+*   **`product_images`**: Stores URLs for each product's images.
+*   **`product_variants`**: Stores the different variants (e.g., color, size) for each product.
+*   **`scraping_sessions`**: A log of each scraping job, including start/end times, number of products found, and status.
 
-Создайте файл `.env` со следующими параметрами:
+## Getting Started
 
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-DB_NAME=agilite
+### Requirements
+*   Python 3.11+
+*   PostgreSQL 12+
+*   Git
 
-# Application Configuration
-SCHEDULE_HOURS=6
-```
+### Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository_url>
+    cd <repository_name>
+    ```
 
-## Структура базы данных
+2.  **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Set up the database:**
+    Connect to your PostgreSQL instance and create a new database.
+    ```sql
+    CREATE DATABASE agilite;
+    ```
+4.  **Configure environment variables:**
+    Copy the example file and edit it with your database credentials.
+    ```bash
+    cp env.example .env
+    ```
+    Your `.env` file should look like this:
+    ```env
+    # Database Configuration
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_USER=your_user
+    DB_PASSWORD=your_password
+    DB_NAME=agilite
 
-### Таблицы:
+    # Application Configuration
+    SCHEDULE_HOURS=6
+    ```
 
-1. **products** - основная информация о продуктах
-   - id, url, title, price, description
-   - image_count, first_image_url, stock_status
-   - variant_count, category, timestamps
-
-2. **product_images** - изображения продуктов
-   - id, product_id, url, order_index
-
-3. **product_variants** - варианты продуктов
-   - id, product_id, name, variant_type
-
-4. **scraping_sessions** - сессии скрапинга
-   - id, session_start, session_end
-   - products_scraped, products_processed, status
-
-## Запуск
-
+### Running the Pipeline
+To run the pipeline manually for a single cycle:
 ```bash
 python src/main.py
 ```
+The application will connect to the database, create the necessary tables, and run the full scrape-and-process cycle. By default, it is scheduled to run every 1 hour.
 
-Приложение будет:
-1. Проверять подключение к базе данных
-2. Создавать таблицы если их нет
-3. Запускать скраппер для сбора данных
-4. Обрабатывать и сохранять данные в БД
-5. Повторять процесс по расписанию
+## Project Assumptions
+*   **Website Structure**: The scraper assumes the general HTML structure and class names of `agilite.co.il` will remain relatively stable. Significant changes to the website's front-end may require updates to the scraper's selectors.
+*   **Stock Level Interpretation**: Stock status is determined by parsing text on the page. The logic is based on the current observed values ("In Stock", "Out of Stock", "Pre-order").
+*   **No Official API**: The project was built without access to an internal API, relying solely on publicly accessible information.
 
-## Мониторинг
-
-Данные сохраняются в PostgreSQL. Для просмотра статистики используйте SQL запросы:
-
-```sql
--- Общее количество продуктов
-SELECT COUNT(*) FROM products;
-
--- Статистика по категориям
-SELECT category, COUNT(*) FROM products GROUP BY category;
-
--- Последние сессии скрапинга
-SELECT * FROM scraping_sessions ORDER BY session_start DESC LIMIT 10;
-```
-
-## Логирование
-
-Все операции логируются с временными метками. Логи выводятся в консоль.
-
-## Разработка
-
-Для разработки можно использовать тестовую базу данных:
-
-```bash
-# Создайте тестовую БД
-createdb agilite_test
-
-# Установите переменные окружения для тестов
-export DB_NAME=agilite_test
-```
+## Future Improvements
+If more time were available, the following improvements could be made:
+*   **More Robust Scraping**: Implement a proxy rotation service to minimize the risk of being blocked during large-scale scraping. Add more sophisticated retry logic and error handling.
+*   **Data Validation**: Integrate a data validation framework (like Pandera or Great Expectations) to check the quality and integrity of the data before it's loaded into the database.
+*   **Delta Processing**: Optimize the data processor to identify what has changed since the last run (e.g., only stock or price) instead of creating a full product record every time, which would make the database more efficient.
+*   **Containerization**: Package the application in a Docker container for easier deployment and environment consistency.

@@ -83,4 +83,4 @@ Thumbs.db
 .env 
 
 # Ignore test files
-test_urls.py
+test*.py

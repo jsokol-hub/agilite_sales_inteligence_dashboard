@@ -6,7 +6,7 @@ import logging
 import traceback
 import sys
 
-# Настройка логирования
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
