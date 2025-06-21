@@ -1,10 +1,10 @@
 # Agilite Data Intelligence Pipeline
 
-This project is a **fully automated data pipeline** that collects product information and stock levels from agilite.co.il, processes the data, and stores it in a PostgreSQL database. The system consists of **two microservices** working together to provide continuous data collection and processing capabilities.
+This project is a **fully automated data pipeline** that collects product information and stock levels from agilite.co.il, processes the data, and stores it in a PostgreSQL database. The complete system consists of **three components** working together to provide comprehensive data intelligence capabilities.
 
 ## System Architecture
 
-The pipeline is designed as a **microservices architecture** with two main components:
+The complete system is designed as a **distributed architecture** with three main components, all **deployed in Docker containers and running automatically on a production server**:
 
 ### 1. Data Collection Microservice (`src/data_collection/scraper_primary.py`)
 - **Purpose**: Automated web scraping service
@@ -14,6 +14,7 @@ The pipeline is designed as a **microservices architecture** with two main compo
   - Saves raw data to JSON files with timestamps
   - Handles pagination and product discovery automatically
 - **Output**: Timestamped JSON files in `data/raw/` directory
+- **Deployment**: Containerized and running on production server with automatic scheduling
 
 ### 2. Data Processing Microservice (`src/data_processing/data_processor.py`)
 - **Purpose**: Data transformation and storage service
@@ -23,19 +24,55 @@ The pipeline is designed as a **microservices architecture** with two main compo
   - Stores processed data in PostgreSQL database with historical tracking
   - Provides statistical analysis and reporting capabilities
 - **Output**: Structured data in PostgreSQL database with full historical records
+- **Deployment**: Containerized and running on production server with automatic data processing
+
+### 3. Dashboard Application (`app.py`)
+- **Purpose**: Interactive web-based data visualization and analytics interface
+- **Functionality**:
+  - Real-time connection to the PostgreSQL database
+  - Interactive dashboards with Plotly charts and graphs
+  - Historical stock level analysis over time
+  - Price distribution analysis
+  - High-demand product identification
+  - Stock-out rate analysis by category
+  - Product table with live data
+  - Automatic data refresh and updates
+- **Technology**: Built with Dash, Plotly, and Bootstrap
+- **Features**:
+  - Stock level trends over time
+  - Category-based stock analysis
+  - Price distribution histograms
+  - High-demand product tracking
+  - Database and scraping status monitoring
+  - Responsive web interface
+- **Deployment**: Containerized and accessible via web interface on production server
 
 ## Automation Features
 
 The system includes comprehensive automation:
 
 - **Scheduled Execution**: Automatic data collection every 6 hours (configurable)
-- **Error Handling**: Robust error handling and logging for both services
+- **Error Handling**: Robust error handling and logging for all services
 - **Historical Data Tracking**: Each scraping session creates new records, preserving historical data
 - **Database Management**: Automatic table creation and schema management
 - **Monitoring**: Comprehensive logging and status tracking
 
+## Production Deployment
+
+This system is **currently deployed and running in production**:
+
+- **Containerized Deployment**: All components are packaged in Docker containers for consistency and scalability
+- **Production Server**: Running on a dedicated server with automatic startup and monitoring
+- **Continuous Operation**: The system operates 24/7 with automatic data collection and processing
+- **Web Dashboard**: Accessible via web interface for real-time monitoring and analysis
+  - **Live Dashboard**: [http://agilite.bysokol.com/](http://agilite.bysokol.com/)
+- **Database**: PostgreSQL database with persistent storage and backup capabilities
+- **Monitoring**: Comprehensive logging and health checks for all services
+
+The production deployment demonstrates the system's reliability and readiness for real-world business intelligence applications.
+
 ## Project Goal
-The objective is to create a reliable, automated system for tracking product data over time, enabling historical analysis of stock levels, pricing, and product assortment. The microservices architecture ensures scalability, maintainability, and fault tolerance.
+The objective is to create a reliable, automated system for tracking product data over time, enabling historical analysis of stock levels, pricing, and product assortment. The distributed architecture ensures scalability, maintainability, and fault tolerance across all three components.
 
 ## How It Works
 
@@ -119,7 +156,26 @@ The application will connect to the database, create the necessary tables, and r
 
 ## Future Improvements
 If more time were available, the following improvements could be made:
+
+### Data Collection Enhancements
+*   **Shopify API Integration**: Replace web scraping with official Shopify API access for more reliable and efficient data collection, including real-time inventory updates and sales data.
+*   **Review and Rating Tracking**: Implement collection of customer reviews, ratings, and sentiment analysis to understand product popularity and customer satisfaction.
+*   **Sales Data Integration**: Connect to Shopify's order and sales data to track actual sales velocity, revenue trends, and conversion rates.
 *   **More Robust Scraping**: Implement a proxy rotation service to minimize the risk of being blocked during large-scale scraping. Add more sophisticated retry logic and error handling.
+
+### Data Processing Improvements
 *   **Data Validation**: Integrate a data validation framework (like Pandera or Great Expectations) to check the quality and integrity of the data before it's loaded into the database.
 *   **Delta Processing**: Optimize the data processor to identify what has changed since the last run (e.g., only stock or price) instead of creating a full product record every time, which would make the database more efficient.
+*   **Advanced Analytics**: Implement machine learning models for demand forecasting, price optimization, and inventory management recommendations.
+
+### Intelligence and Recommendations
+*   **Product Recommendation Engine**: Build a recommendation system based on historical sales data, customer behavior, and product similarities to suggest cross-selling and upselling opportunities.
+*   **Demand Forecasting**: Develop predictive models to forecast product demand based on historical patterns, seasonal trends, and market indicators.
+*   **Automated Alerts**: Create intelligent alerting system for low stock, price changes, or unusual sales patterns.
+*   **Competitive Intelligence**: Expand data collection to include competitor pricing and inventory levels for market positioning analysis.
+
+### Technical Improvements
 *   **Containerization**: Package the application in a Docker container for easier deployment and environment consistency.
+*   **Microservices Separation**: Split the current monolithic structure into truly independent microservices with their own databases and APIs.
+*   **Real-time Processing**: Implement streaming data processing for real-time analytics and immediate insights.
+*   **Advanced Dashboard Features**: Add user authentication, customizable dashboards, export capabilities, and mobile-responsive design.
