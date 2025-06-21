@@ -1,17 +1,41 @@
 # Agilite Data Intelligence Pipeline
 
-This project is a data pipeline that collects product information and stock levels from agilite.co.il, processes the data, and stores it in a PostgreSQL database. The resulting database is designed to serve as a data source for sales intelligence analysis and can be connected to any dashboarding tool (e.g., Power BI, Tableau, Google Data Studio) or a custom web application.
-
-## Project Goal
-The objective is to create a reliable, automated system for tracking product data over time, enabling historical analysis of stock levels, pricing, and product assortment.
+This project is a **fully automated data pipeline** that collects product information and stock levels from agilite.co.il, processes the data, and stores it in a PostgreSQL database. The system consists of **two microservices** working together to provide continuous data collection and processing capabilities.
 
 ## System Architecture
-The pipeline consists of two main components:
 
-1.  **Data Collector (`src/data_collection/scraper_primary.py`)**: A web scraper that browses the live site and extracts product data.
-2.  **Data Processor (`src/data_processing/data_processor.py`)**: A script that cleans the raw scraped data and saves it to the PostgreSQL database.
+The pipeline is designed as a **microservices architecture** with two main components:
 
-The entire process is orchestrated by `src/main.py`, which runs the collector and processor in sequence on a schedule.
+### 1. Data Collection Microservice (`src/data_collection/scraper_primary.py`)
+- **Purpose**: Automated web scraping service
+- **Functionality**: 
+  - Collects product data from agilite.co.il using Selenium WebDriver
+  - Extracts detailed product information including variants, colors, and stock levels
+  - Saves raw data to JSON files with timestamps
+  - Handles pagination and product discovery automatically
+- **Output**: Timestamped JSON files in `data/raw/` directory
+
+### 2. Data Processing Microservice (`src/data_processing/data_processor.py`)
+- **Purpose**: Data transformation and storage service
+- **Functionality**:
+  - Processes raw JSON data from the collection service
+  - Transforms and cleans the data
+  - Stores processed data in PostgreSQL database with historical tracking
+  - Provides statistical analysis and reporting capabilities
+- **Output**: Structured data in PostgreSQL database with full historical records
+
+## Automation Features
+
+The system includes comprehensive automation:
+
+- **Scheduled Execution**: Automatic data collection every 6 hours (configurable)
+- **Error Handling**: Robust error handling and logging for both services
+- **Historical Data Tracking**: Each scraping session creates new records, preserving historical data
+- **Database Management**: Automatic table creation and schema management
+- **Monitoring**: Comprehensive logging and status tracking
+
+## Project Goal
+The objective is to create a reliable, automated system for tracking product data over time, enabling historical analysis of stock levels, pricing, and product assortment. The microservices architecture ensures scalability, maintainability, and fault tolerance.
 
 ## How It Works
 

@@ -306,9 +306,11 @@ class AgiliteScraper:
                 if 'offers' in json_ld_data:
                     offers = json_ld_data['offers']
                     if isinstance(offers, list):
+                        variant_names = [offer.get('name') for offer in offers if offer.get('name')]
+                        if variant_names:
+                             product_data['variants'].append({'type': 'General', 'values': variant_names})
+
                         for offer in offers:
-                            if 'name' in offer:
-                                product_data['variants'].append(offer['name'])
                             # Get price from first offer
                             if not product_data['price'] and 'price' in offer:
                                 product_data['price'] = str(offer['price'])
@@ -317,7 +319,7 @@ class AgiliteScraper:
                                 product_data['stock_status'] = offer['availability']
                     elif isinstance(offers, dict):
                         if 'name' in offers:
-                            product_data['variants'].append(offers['name'])
+                            product_data['variants'].append({'type': 'General', 'values': [offers['name']]})
                         if 'price' in offers:
                             product_data['price'] = str(offers['price'])
                         if 'availability' in offers:
@@ -371,36 +373,74 @@ class AgiliteScraper:
             if not product_data['variants']:
                 try:
                     print("Looking for variants in HTML...")
-                    # Try different variant selectors based on HTML structure
-                    variant_selectors = [
-                        'input[name="option1"]',
-                        '.variant-picker input[type="radio"]',
-                        'select[name="id"] option',
-                        '.color-swatch',
-                        '[data-option-value]'
+                    # Selector for variant groups (fieldset, etc.)
+                    variant_group_selectors = [
+                        '.product-form__input',
+                        '.selector-wrapper',
+                        '.variant-picker',
+                        '.product-form__option'
                     ]
-                    
-                    for selector in variant_selectors:
+
+                    for group_selector in variant_group_selectors:
                         try:
-                            variant_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                            for variant in variant_elements:
-                                if selector == 'input[name="option1"]' or 'radio' in selector:
-                                    variant_text = variant.get_attribute('value')
-                                elif 'option' in selector:
-                                    variant_text = variant.text.strip()
-                                elif 'swatch' in selector:
-                                    variant_text = variant.find_element(By.CSS_SELECTOR, '.sr-only').text.strip()
-                                else:
-                                    variant_text = variant.get_attribute('data-option-value')
+                            variant_groups = self.driver.find_elements(By.CSS_SELECTOR, group_selector)
+                            if not variant_groups:
+                                continue
+
+                            print(f"Found {len(variant_groups)} variant groups with selector '{group_selector}'")
+                            for group in variant_groups:
+                                try:
+                                    # Find the title of the variant group (e.g., "Color", "Size")
+                                    group_title_element = group.find_element(By.CSS_SELECTOR, 'label, .form__label, .variant__label')
+                                    group_title = group_title_element.text.strip().replace(':', '')
+                                except NoSuchElementException:
+                                    group_title = "Unknown"
                                 
-                                if variant_text and variant_text not in product_data['variants']:
-                                    product_data['variants'].append(variant_text)
-                            
+                                # Find all values within this group
+                                value_elements = group.find_elements(By.CSS_SELECTOR, 'input[type="radio"], option, [data-value]')
+                                values = []
+
+                                if not value_elements: # Fallback for different structures
+                                     value_elements = group.find_elements(By.CSS_SELECTOR, '.variant-input-wrap')
+
+                                for el in value_elements:
+                                    value = None
+                                    if el.tag_name == 'input':
+                                        value = el.get_attribute('value')
+                                    elif el.tag_name == 'option':
+                                        value = el.text.strip()
+                                        if "select" in value.lower(): continue # Skip placeholder
+                                    else: # Other elements like divs or custom tags
+                                        value = el.get_attribute('data-value') or el.text.strip()
+                                    
+                                    if value and value not in values:
+                                        values.append(value)
+                                
+                                if values:
+                                    # Check if this group is already added
+                                    is_new_group = True
+                                    for existing_group in product_data['variants']:
+                                        if existing_group['type'] == group_title:
+                                            is_new_group = False
+                                            # Add new values if any
+                                            for v in values:
+                                                if v not in existing_group['values']:
+                                                    existing_group['values'].append(v)
+                                            break
+                                    if is_new_group:
+                                         product_data['variants'].append({
+                                            'type': group_title,
+                                            'values': values
+                                        })
+                                    print(f"Found variant group '{group_title}' with values: {values}")
+                                
+                            # If we found variants with this group selector, we can stop
                             if product_data['variants']:
-                                print(f"Found {len(product_data['variants'])} variants with selector {selector}")
-                                break
-                        except:
+                                break 
+                        except Exception as e:
+                            print(f"Error processing group selector {group_selector}: {e}")
                             continue
+
                 except Exception as e:
                     print(f"Error getting variants from HTML: {str(e)}")
 

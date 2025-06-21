@@ -132,13 +132,16 @@ class AgiliteDataProcessor:
             
             # Save variants
             if product_data.get('variants'):
-                for variant_name in product_data['variants']:
-                    if variant_name:
-                        product_variant = ProductVariant(
-                            product_id=product.id,
-                            name=variant_name
-                        )
-                        self.db.add(product_variant)
+                for variant_group in product_data['variants']:
+                    variant_type = variant_group.get('type', 'Unknown')
+                    for variant_name in variant_group.get('values', []):
+                        if variant_name:
+                            product_variant = ProductVariant(
+                                product_id=product.id,
+                                name=variant_name,
+                                variant_type=variant_type
+                            )
+                            self.db.add(product_variant)
             
             self.db.commit()
             return True

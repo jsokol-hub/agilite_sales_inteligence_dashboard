@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "dockerfilePath": "./Dockerfile",
+  "buildArguments": {},
+  "instructions": [
+    "FROM python:3.11-slim",
+    "WORKDIR /app",
+    "RUN apt-get update && apt-get install -y wget gnupg software-properties-common && wget -qO- https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && echo \"deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main\" >> /etc/apt/sources.list.d/google-chrome.list && apt-get update && apt-get install -y google-chrome-stable firefox-esr && rm -rf /var/lib/apt/lists/*",
+    "COPY requirements.txt .",
+    "RUN pip install --no-cache-dir -r requirements.txt",
+    "COPY src/ ./src/",
+    "COPY .env.example .env",
+    "RUN mkdir -p data/raw data/processed data/test_scrape",
+    "ENV PYTHONPATH=/app",
+    "ENV PYTHONUNBUFFERED=1",
+    "RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app",
+    "USER appuser",
+    "HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD python -c \"import sys; sys.exit(0)\"",
+    "CMD [\"python\", \"src/main.py\"]"
+  ]
+} 

@@ -23,6 +23,11 @@ def run_scraper():
         try:
             products_data = scraper.scrape_all_products()
             logger.info(f"Successfully scraped {len(products_data)} products")
+            
+            # Save the collected data to file
+            scraper.save_products_data(products_data)
+            logger.info("Data saved to file successfully")
+            
             return True
         except Exception as e:
             logger.error(f"Error during scraping: {str(e)}")
