@@ -195,7 +195,14 @@ class AgiliteScraper:
                 try:
                     data = json.loads(script.string)
                     if isinstance(data, dict) and data.get('@type') == 'Product':
+                        print(f"Found Product JSON-LD data: {data.get('name', 'Unknown')}")
                         return data
+                    # Also check for arrays of products
+                    elif isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict) and item.get('@type') == 'Product':
+                                print(f"Found Product JSON-LD data in array: {item.get('name', 'Unknown')}")
+                                return item
                 except json.JSONDecodeError:
                     continue
             return None
@@ -472,35 +479,80 @@ class AgiliteScraper:
             if not product_data['stock_status']:
                 try:
                     print("Looking for stock status in HTML...")
-                    # Try different stock status selectors
+                    # Try different stock status selectors - more specific ones first
                     stock_selectors = [
                         '.product-inventory',
                         '.stock-status',
+                        '.availability',
                         '[class*="stock"]',
                         '[class*="inventory"]',
-                        '.add-to-cart-button'
+                        '[class*="availability"]',
+                        '.add-to-cart-button',
+                        '.product-form__submit',
+                        'button[type="submit"]'
                     ]
                     
                     for selector in stock_selectors:
                         try:
-                            stock_element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                            stock_text = stock_element.text.strip().lower()
-                            
-                            # Check for common stock status indicators
-                            if 'out of stock' in stock_text or 'sold out' in stock_text:
-                                product_data['stock_status'] = 'Out of Stock'
-                            elif 'in stock' in stock_text or 'available' in stock_text:
-                                product_data['stock_status'] = 'In Stock'
-                            elif 'add to cart' in stock_text:
-                                product_data['stock_status'] = 'In Stock'
-                            elif 'pre-order' in stock_text:
-                                product_data['stock_status'] = 'Pre-order'
+                            stock_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                            if not stock_elements:
+                                continue
+                                
+                            for stock_element in stock_elements:
+                                stock_text = stock_element.text.strip().lower()
+                                element_class = stock_element.get_attribute('class') or ''
+                                element_disabled = stock_element.get_attribute('disabled')
+                                
+                                print(f"Checking stock element: '{stock_text}' (class: {element_class}, disabled: {element_disabled})")
+                                
+                                # Check for common stock status indicators
+                                if ('out of stock' in stock_text or 'sold out' in stock_text or 
+                                    'unavailable' in stock_text or 'not available' in stock_text):
+                                    product_data['stock_status'] = 'Out of Stock'
+                                    print(f"Found stock status: {product_data['stock_status']}")
+                                    break
+                                elif ('in stock' in stock_text or 'available' in stock_text or 
+                                      'add to cart' in stock_text or 'buy now' in stock_text):
+                                    # Additional check: if button is disabled, it might be out of stock
+                                    if element_disabled:
+                                        product_data['stock_status'] = 'Out of Stock'
+                                    else:
+                                        product_data['stock_status'] = 'In Stock'
+                                    print(f"Found stock status: {product_data['stock_status']}")
+                                    break
+                                elif 'pre-order' in stock_text:
+                                    product_data['stock_status'] = 'Pre-order'
+                                    print(f"Found stock status: {product_data['stock_status']}")
+                                    break
                             
                             if product_data['stock_status']:
-                                print(f"Found stock status: {product_data['stock_status']}")
                                 break
-                        except:
+                        except Exception as e:
+                            print(f"Error checking selector {selector}: {str(e)}")
                             continue
+                            
+                    # If still no stock status found, try to infer from page structure
+                    if not product_data['stock_status']:
+                        print("Trying to infer stock status from page structure...")
+                        try:
+                            # Check if there's a disabled add to cart button
+                            disabled_buttons = self.driver.find_elements(By.CSS_SELECTOR, 'button[disabled], input[disabled]')
+                            if disabled_buttons:
+                                for button in disabled_buttons:
+                                    button_text = button.text.strip().lower()
+                                    if any(word in button_text for word in ['add to cart', 'buy', 'purchase']):
+                                        product_data['stock_status'] = 'Out of Stock'
+                                        print(f"Inferred stock status from disabled button: {product_data['stock_status']}")
+                                        break
+                            
+                            # If still no status, assume in stock if we found a price
+                            if not product_data['stock_status'] and product_data['price']:
+                                product_data['stock_status'] = 'In Stock'
+                                print(f"Assuming in stock based on price presence: {product_data['stock_status']}")
+                                
+                        except Exception as e:
+                            print(f"Error inferring stock status: {str(e)}")
+                            
                 except Exception as e:
                     print(f"Error getting stock status from HTML: {str(e)}")
 

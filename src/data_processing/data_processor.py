@@ -90,9 +90,10 @@ class AgiliteDataProcessor:
             return "Unknown"
         
         status_lower = status.lower()
-        if "instock" in status_lower or "in stock" in status_lower:
+        # Handle full schema.org URLs
+        if "schema.org/instock" in status_lower or "instock" in status_lower or "in stock" in status_lower:
             return "In Stock"
-        elif "outofstock" in status_lower or "out of stock" in status_lower:
+        elif "schema.org/outofstock" in status_lower or "outofstock" in status_lower or "out of stock" in status_lower:
             return "Out of Stock"
         elif "pre-order" in status_lower:
             return "Pre-order"

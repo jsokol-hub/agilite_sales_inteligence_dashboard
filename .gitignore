@@ -71,9 +71,9 @@ Thumbs.db
 
 # Ignore all raw and processed data except sample files
 /data/raw/*
-!/data/raw/sample.json
+!/data/raw/sample_raw.json
 /data/processed/*
-!/data/processed/sample.csv
+!/data/processed/sample_processed.csv
 /data/test_scrape/*
 
 # Logs
